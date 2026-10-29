@@ -67,6 +67,9 @@ export const setting = sqliteTable('setting', {
 	webhookUrl: text('webhook_url').default('').notNull(),
 	webhookStatus: integer('webhook_status').default(1).notNull(),
 	webhookRetry: integer('webhook_retry').default(0).notNull(),
-	webhookSecret: text('webhook_secret').default('').notNull()
+	webhookSecret: text('webhook_secret').default('').notNull(),
+	wecomWebhookUrl: text('wecom_webhook_url').default('').notNull(),
+	wecomStatus: integer('wecom_status').default(1).notNull(),
+	wecomTimeZone: text('wecom_time_zone').default('Asia/Shanghai').notNull()
 });
 export default setting

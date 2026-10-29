@@ -12,6 +12,7 @@ import userService from '../service/user-service';
 import telegramService from '../service/telegram-service';
 import aiService from '../service/ai-service';
 import webhookService from '../service/webhook-service';
+import wecomService from '../service/wecom-service';
 
 export async function email(message, env, ctx) {
 
@@ -27,6 +28,9 @@ export async function email(message, env, ctx) {
 			webhookUrl,
 			webhookRetry,
 			webhookSecret,
+			wecomStatus,
+			wecomWebhookUrl,
+			wecomTimeZone,
 			ruleEmail,
 			ruleType,
 			r2Domain,
@@ -196,6 +200,11 @@ export async function email(message, env, ctx) {
 		//转发到 Webhook
 		if (webhookStatus === settingConst.webhookStatus.OPEN && webhookUrl) {
 			await webhookService.sendEmail({ env }, emailRow, webhookUrl, webhookRetry, webhookSecret);
+		}
+
+		//转发到企业微信机器人
+		if (wecomStatus === settingConst.wecomStatus.OPEN && wecomWebhookUrl) {
+			await wecomService.sendEmail({ env }, emailRow, wecomWebhookUrl, wecomTimeZone);
 		}
 
 	} catch (e) {

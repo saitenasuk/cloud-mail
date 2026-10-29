@@ -33,8 +33,26 @@ const dbInit = {
 		await this.v3_2DB(c);
 		await this.v3_3DB(c);
 		await this.v3_4DB(c);
+		await this.v3_5DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v3_5DB(c) {
+		const columns = [
+			`ALTER TABLE setting ADD COLUMN wecom_webhook_url TEXT NOT NULL DEFAULT '';`,
+			`ALTER TABLE setting ADD COLUMN wecom_status INTEGER NOT NULL DEFAULT 1;`,
+			`ALTER TABLE setting ADD COLUMN wecom_time_zone TEXT NOT NULL DEFAULT 'Asia/Shanghai';`
+		];
+
+		//逐个执行，已存在的字段跳过，避免后续新增字段被整批跳过
+		for (const sql of columns) {
+			try {
+				await c.env.db.prepare(sql).run();
+			} catch (e) {
+				console.warn(`跳过字段：${e.message}`);
+			}
+		}
 	},
 
 	async v3_4DB(c) {

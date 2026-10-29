@@ -262,6 +262,15 @@
                 </div>
               </div>
               <div class="setting-item">
+                <div><span>{{ $t('wecomBot') }}</span></div>
+                <div class="forward">
+                  <span>{{ setting.wecomStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
+                  <el-button class="opt-button" size="small" type="primary" @click="openWecomSetting">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
+              <div class="setting-item">
                 <div><span>{{ $t('forwardingRules') }}</span></div>
                 <div class="forward">
                   <span>{{ setting.ruleType === 0 ? $t('forwardAll') : $t('rules') }}</span>
@@ -690,6 +699,41 @@ Authorization: &lt;secret&gt;</pre>
         </template>
       </el-dialog>
       <el-dialog
+          v-model="wecomShow"
+          class="forward-dialog"
+          @closed="wecomFormatShow = false"
+      >
+        <template #header>
+          <div class="forward-head">
+            <span class="forward-set-title">{{ $t('wecomBot') }}</span>
+            <el-tooltip effect="dark" :content="$t('wecomDesc')">
+              <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+            </el-tooltip>
+          </div>
+        </template>
+        <div class="forward-set-body">
+          <el-input :placeholder="$t('wecomWebhookUrl')" v-model="wecomWebhookUrl" @keyup.enter="wecomSave"></el-input>
+          <div v-show="wecomFormatShow" class="webhook-format">
+            <pre>{{ wecomPayloadExample }}</pre>
+          </div>
+        </div>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-switch v-model="wecomStatus" :active-value="0" :inactive-value="1" :active-text="$t('enable')"
+                       :inactive-text="$t('disable')"/>
+            <div class="webhook-footer-right">
+              <div class="webhook-format-title" @click="wecomFormatShow = !wecomFormatShow">
+                <span>{{ $t('webhookFormat') }}</span>
+                <Icon class="webhook-format-icon" :class="{ open: wecomFormatShow }" icon="mingcute:down-small-fill" width="18" height="18"/>
+              </div>
+              <el-button :loading="settingLoading" type="primary" @click="wecomSave">
+                {{ $t('save') }}
+              </el-button>
+            </div>
+          </div>
+        </template>
+      </el-dialog>
+      <el-dialog
           v-model="forwardRulesShow"
           class="forward-dialog"
       >
@@ -952,6 +996,7 @@ const tgSettingShow = ref(false)
 const noticePopupShow = ref(false)
 const thirdEmailShow = ref(false)
 const webhookShow = ref(false)
+const wecomShow = ref(false)
 const forwardRulesShow = ref(false)
 const emailPrefixShow = ref(false)
 const showResendList = ref(false)
@@ -1063,6 +1108,14 @@ const webhookPayloadExample = `{
   "code": "123456",
   "createTime": "2099-12-30 23:59:59"
 }`
+const wecomWebhookUrl = ref('')
+const wecomStatus = ref(1)
+const wecomFormatShow = ref(false)
+const wecomPayloadExample = `【新邮件】GitHub 登录验证码
+验证码：123456
+发件人：GitHub <noreply@github.com>
+收件人：admin@example.com
+收件时间：2099-12-30 23:59:59`
 const emailColumnWidth = ref(0)
 const tokenColumnWidth = ref(0)
 const ruleType = ref(0)
@@ -1255,6 +1308,12 @@ function openWebhookSetting() {
   webhookShow.value = true
 }
 
+function openWecomSetting() {
+  wecomStatus.value = setting.value.wecomStatus ?? 1
+  wecomWebhookUrl.value = setting.value.wecomWebhookUrl || ''
+  wecomShow.value = true
+}
+
 function openEmailPrefix() {
   emailPrefixShow.value = true
 }
@@ -1389,6 +1448,16 @@ function webhookSave() {
     webhookUrl: url,
     webhookRetry: retry,
     webhookSecret: webhookSecret.value.trim()
+  }
+  editSetting(form)
+}
+
+function wecomSave() {
+  const form = {
+    wecomStatus: wecomStatus.value,
+    wecomWebhookUrl: wecomWebhookUrl.value.trim(),
+    //收件时间按管理员浏览器时区推送
+    wecomTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai'
   }
   editSetting(form)
 }
@@ -1706,6 +1775,7 @@ function editSetting(settingForm, refreshStatus = true) {
     tgSettingShow.value = false
     thirdEmailShow.value = false
     webhookShow.value = false
+    wecomShow.value = false
     forwardRulesShow.value = false
     addVerifyCountShow.value = false
     regVerifyCountShow.value = false

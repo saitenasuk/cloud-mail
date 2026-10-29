@@ -24,6 +24,7 @@ import account from "../entity/account";
 import { att } from '../entity/att';
 import telegramService from './telegram-service';
 import webhookService from './webhook-service';
+import wecomService from './wecom-service';
 import forwardMime from '../utils/forward-mime';
 
 const emailService = {
@@ -964,7 +965,7 @@ const emailService = {
 	//站内邮件不经过 email 事件，在这里按转发规则推送
 	async forwardOnSiteEmail(c, emailRowList, { sendParams }) {
 
-		const { tgBotStatus, tgChatId, forwardStatus, forwardEmail, webhookStatus, webhookUrl, webhookRetry, webhookSecret, ruleEmail, ruleType } = await settingService.query(c);
+		const { tgBotStatus, tgChatId, forwardStatus, forwardEmail, webhookStatus, webhookUrl, webhookRetry, webhookSecret, wecomStatus, wecomWebhookUrl, wecomTimeZone, ruleEmail, ruleType } = await settingService.query(c);
 
 		if (ruleType === settingConst.ruleType.RULE) {
 			const emails = ruleEmail.split(',');
@@ -981,6 +982,11 @@ const emailService = {
 			//转发到 Webhook
 			if (webhookStatus === settingConst.webhookStatus.OPEN && webhookUrl) {
 				await webhookService.sendEmail(c, emailRow, webhookUrl, webhookRetry, webhookSecret);
+			}
+
+			//转发到企业微信机器人
+			if (wecomStatus === settingConst.wecomStatus.OPEN && wecomWebhookUrl) {
+				await wecomService.sendEmail(c, emailRow, wecomWebhookUrl, wecomTimeZone);
 			}
 
 		}
