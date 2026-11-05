@@ -23,3 +23,9 @@ export function deleteBackground() {
 export function setBlackList(params) {
     return http.put('/setting/setBlacklist', params)
 }
+export function testTranslateKey(key) {
+    return http.post('/setting/testTranslateKey', {key}, {
+        noMsg: true,
+        timeout: 30 * 1000
+    })
+}

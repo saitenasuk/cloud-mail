@@ -70,6 +70,7 @@ export const setting = sqliteTable('setting', {
 	webhookSecret: text('webhook_secret').default('').notNull(),
 	wecomWebhookUrl: text('wecom_webhook_url').default('').notNull(),
 	wecomStatus: integer('wecom_status').default(1).notNull(),
-	wecomTimeZone: text('wecom_time_zone').default('Asia/Shanghai').notNull()
+	wecomTimeZone: text('wecom_time_zone').default('Asia/Shanghai').notNull(),
+	translateKey: text('translate_key').default('').notNull()
 });
 export default setting

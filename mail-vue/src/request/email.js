@@ -25,3 +25,10 @@ export function emailSend(form,progress) {
         noMsg: true
     })
 }
+
+export function emailTranslate(emailId) {
+    return http.post('/email/translate', {emailId}, {
+        noMsg: true,
+        timeout: 60 * 1000
+    })
+}

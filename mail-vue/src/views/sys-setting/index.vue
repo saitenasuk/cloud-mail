@@ -83,6 +83,19 @@
                   </el-button>
                 </div>
               </div>
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('translateKey') }}</span>
+                  <el-tooltip effect="dark" :content="$t('translateKeyDesc')">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
+                </div>
+                <div class="forward">
+                  <el-button class="opt-button" size="small" type="primary" @click="openTranslateKey">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -896,6 +909,18 @@ Authorization: &lt;secret&gt;</pre>
         </div>
         <el-button type="primary" style="width: 100%;" :loading="settingLoading" @click="saveEmailPrefix">{{ $t('save') }}</el-button>
       </el-dialog>
+      <el-dialog v-model="translateKeyShow" :title="t('translateKey')" class="forward-dialog">
+        <el-form>
+          <el-form-item :label="t('translateKeyDesc')" label-position="top">
+            <el-input v-model="translateKey" :placeholder="t('translateKeyPlaceholder')" clearable
+                      @keyup.enter="saveTranslateKey"/>
+          </el-form-item>
+        </el-form>
+        <div class="dialog-footer">
+          <el-button :loading="translateKeyTesting" @click="testTranslateKeyAction">{{ t('translateKeyTest') }}</el-button>
+          <el-button type="primary" :loading="settingLoading" @click="saveTranslateKey">{{ $t('save') }}</el-button>
+        </div>
+      </el-dialog>
       <el-dialog v-model="blackFormShow" class="forward-dialog" @closed="resetBlackList">
         <template #header>
           <div class="forward-head">
@@ -956,7 +981,7 @@ Authorization: &lt;secret&gt;</pre>
 
 <script setup>
 import {computed, defineOptions, nextTick, reactive, ref} from "vue";
-import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet} from "@/request/setting.js";
+import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet, testTranslateKey} from "@/request/setting.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useUiStore} from "@/store/ui.js";
 import {useUserStore} from "@/store/user.js";
@@ -999,6 +1024,9 @@ const webhookShow = ref(false)
 const wecomShow = ref(false)
 const forwardRulesShow = ref(false)
 const emailPrefixShow = ref(false)
+const translateKeyShow = ref(false)
+const translateKey = ref('')
+const translateKeyTesting = ref(false)
 const showResendList = ref(false)
 const settingStore = useSettingStore();
 const uiStore = useUiStore();
@@ -1316,6 +1344,47 @@ function openWecomSetting() {
 
 function openEmailPrefix() {
   emailPrefixShow.value = true
+}
+
+function openTranslateKey() {
+  translateKey.value = setting.value.translateKey || ''
+  translateKeyShow.value = true
+}
+
+function saveTranslateKey() {
+  editSetting({ translateKey: translateKey.value.trim() }, true)
+}
+
+function testTranslateKeyAction() {
+  if (translateKeyTesting.value) return
+  translateKeyTesting.value = true
+  testTranslateKey(translateKey.value.trim()).then((res) => {
+    if (res?.ok) {
+      const engineName = res.engine === 'v2'
+          ? 'Cloud Translation v2'
+          : res.engine === 'legacy' ? t('translateEngineFree') : 'translate-pa'
+      ElMessage({
+        message: t('translateKeyTestOk', {engine: engineName, sample: res.sample}),
+        type: 'success',
+        plain: true
+      })
+      return
+    }
+    ElMessage({
+      message: t('translateKeyTestFail', {error: res?.error || ''}),
+      type: 'error',
+      plain: true,
+      duration: 8000
+    })
+  }).catch((e) => {
+    ElMessage({
+      message: t('translateKeyTestFail', {error: e?.message || ''}),
+      type: 'error',
+      plain: true
+    })
+  }).finally(() => {
+    translateKeyTesting.value = false
+  })
 }
 
 function openAutoClean() {
@@ -1776,6 +1845,7 @@ function editSetting(settingForm, refreshStatus = true) {
     thirdEmailShow.value = false
     webhookShow.value = false
     wecomShow.value = false
+    translateKeyShow.value = false
     forwardRulesShow.value = false
     addVerifyCountShow.value = false
     regVerifyCountShow.value = false

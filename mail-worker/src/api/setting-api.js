@@ -1,11 +1,18 @@
 import app from '../hono/hono';
 import result from '../model/result';
 import settingService from '../service/setting-service';
+import translateService from '../service/translate-service';
 import userContext from "../security/user-context";
 
 app.put('/setting/set', async (c) => {
 	await settingService.set(c, await c.req.json());
 	return c.json(result.ok());
+});
+
+app.post('/setting/testTranslateKey', async (c) => {
+	const { key } = await c.req.json();
+	const data = await translateService.testKey(c, key);
+	return c.json(result.ok(data));
 });
 
 app.get('/setting/query', async (c) => {

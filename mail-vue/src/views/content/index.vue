@@ -9,12 +9,14 @@
       </span>
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="fluent-mdl2:reply" width="19" height="19" />
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
+      <Icon class="icon" v-if="email.emailId && !translating" :title="showTranslation ? t('showOriginal') : t('translate')" @click="toggleTranslate" icon="mailicons:translate" width="20" height="20" />
+      <Icon v-else-if="translating" class="icon translating" :title="t('translating')" icon="line-md:loading-loop" width="19" height="19" />
     </div>
     <div></div>
     <el-scrollbar class="scrollbar">
       <div class="container">
         <div class="email-title">
-          {{ email.subject }}
+          {{ displaySubject }}
         </div>
         <div class="content">
           <div class="email-info">
@@ -42,8 +44,8 @@
             <el-alert v-if="email.status === 5" :closable="false" :title="$t('delayed')" class="email-msg" type="warning" show-icon />
           </div>
           <el-scrollbar class="htm-scrollbar" :class="!email.attList?.length ? 'bottom-distance' : ''">
-            <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
-            <pre v-else class="email-text" >{{email.text}}</pre>
+            <ShadowHtml class="shadow-html" :html="displayContent" v-if="displayContent" />
+            <pre v-else class="email-text" >{{displayText}}</pre>
           </el-scrollbar>
           <div class="att" v-if="email.attList?.length > 0">
             <div class="att-title">
@@ -85,7 +87,7 @@ import ShadowHtml from '@/components/shadow-html/index.vue'
 import {computed, reactive, ref, watch, onMounted, onUnmounted, nextTick} from "vue";
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {emailDelete, emailRead} from "@/request/email.js";
+import {emailDelete, emailRead, emailTranslate} from "@/request/email.js";
 import {Icon} from "@iconify/vue";
 import {useEmailStore} from "@/store/email.js";
 import {useAccountStore} from "@/store/account.js";
@@ -99,6 +101,7 @@ import {allEmailDelete} from "@/request/all-email.js";
 import {useUiStore} from "@/store/ui.js";
 import {useI18n} from "vue-i18n";
 import {EmailUnreadEnum} from "@/enums/email-enum.js";
+import {sanitizeEmailHtml} from "@/utils/email-html.js";
 const { t } = useI18n()
 
 const uiStore = useUiStore();
@@ -113,6 +116,8 @@ let senderResizeObserver = null
 const showPreview = ref(false)
 const srcList = reactive([])
 
+const translating = ref(false)
+const translation = ref(null)
 
 const email = computed(() => emailStore.contentData.email || {
   emailId: 0,
@@ -121,6 +126,73 @@ const email = computed(() => emailStore.contentData.email || {
   text: '',
   recipient: '[]',
 })
+
+const showTranslated = ref(false)
+
+const showTranslation = computed(() => showTranslated.value && !!translation.value && translation.value.emailId === email.value.emailId)
+
+const displaySubject = computed(() => {
+  if (showTranslation.value) return translation.value.subject || email.value.subject
+  return email.value.subject
+})
+
+const displayContent = computed(() => {
+  //译文来自服务端，渲染前同样要过一遍过滤
+  if (showTranslation.value) return formatImage(sanitizeEmailHtml(translation.value.content || ''))
+  return formatImage(email.value.content)
+})
+
+const displayText = computed(() => {
+  if (showTranslation.value) return translation.value.text
+  return email.value.text
+})
+
+async function toggleTranslate() {
+
+  if (translating.value) return
+
+  //已展示译文，再点一次只切回原文，译文留在内存里
+  if (showTranslation.value) {
+    showTranslated.value = false
+    return
+  }
+
+  //这封邮件已经翻译过，直接展示，不再请求
+  if (translation.value?.emailId === email.value.emailId) {
+    showTranslated.value = true
+    return
+  }
+
+  const emailId = email.value.emailId
+  if (!emailId) return
+
+  translating.value = true
+  try {
+    const data = await emailTranslate(emailId)
+    if (email.value.emailId !== emailId) return
+
+    //原文本来就是中文，服务端不会返回译文
+    if (data?.skipped) {
+      ElMessage({
+        message: t('alreadyChinese'),
+        type: 'info',
+        plain: true
+      })
+      return
+    }
+
+    translation.value = { ...data, emailId }
+    showTranslated.value = true
+  } catch (e) {
+    ElMessage({
+      message: e?.message || t('translateFailed'),
+      type: 'error',
+      plain: true
+    })
+  } finally {
+    translating.value = false
+  }
+}
 
 const sentViaEmail = computed(() => {
   const raw = String(email.value.senderEmail || '').trim()
@@ -133,6 +205,12 @@ const sentViaEmail = computed(() => {
 
 watch(() => accountStore.currentAccountId, () => {
   handleBack()
+})
+
+//切换邮件后丢弃上一封的译文
+watch(() => email.value.emailId, () => {
+  translation.value = null
+  showTranslated.value = false
 })
 
 let readRequesting = false
@@ -342,6 +420,10 @@ const handleDelete = () => {
   }
   .icon {
     cursor: pointer;
+  }
+  .translating {
+    cursor: progress;
+    opacity: .6;
   }
 }
 

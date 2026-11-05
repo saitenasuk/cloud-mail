@@ -3,6 +3,7 @@ import emailService from '../service/email-service';
 import result from '../model/result';
 import userContext from '../security/user-context';
 import attService from '../service/att-service';
+import translateService from '../service/translate-service';
 
 app.get('/email/list', async (c) => {
 	const data = await emailService.list(c, c.req.query(), userContext.getUserId(c));
@@ -32,5 +33,11 @@ app.post('/email/send', async (c) => {
 app.put('/email/read', async (c) => {
 	await emailService.read(c, await c.req.json(), userContext.getUserId(c));
 	return c.json(result.ok());
+})
+
+app.post('/email/translate', async (c) => {
+	const { emailId } = await c.req.json();
+	const translateRow = await translateService.translateEmail(c, Number(emailId));
+	return c.json(result.ok(translateRow));
 })
 
